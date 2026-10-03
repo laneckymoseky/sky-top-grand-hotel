@@ -585,3 +585,170 @@ export const getMonthlyAnalytics = async () => {
     return { success: false, error: error.message };
   }
 };
+// ============================================================================
+// STAFF DASHBOARD HELPERS
+// ============================================================================
+
+export const getStaffByEmail = async (email) => {
+  try {
+    const { data, error } = await supabase
+      .from('hotel_staff')
+      .select('*')
+      .eq('email', email)
+      .single();
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAllStaff = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('hotel_staff')
+      .select('*')
+      .order('full_name');
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAssignedRoomBookings = async (staffId) => {
+  try {
+    const { data, error } = await supabase
+      .from('room_bookings')
+      .select('*, customers(full_name, phone), rooms(room_number, room_type, floor)')
+      .eq('assigned_staff_id', staffId)
+      .order('check_in_date', { ascending: false });
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAssignedEventBookings = async (staffId) => {
+  try {
+    const { data, error } = await supabase
+      .from('event_bookings')
+      .select('*, customers(full_name, phone), event_venues(name, venue_type)')
+      .eq('assigned_staff_id', staffId)
+      .order('event_date', { ascending: false });
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const getAssignedIssues = async (staffId) => {
+  try {
+    const { data, error } = await supabase
+      .from('guest_issues')
+      .select('*, customers(full_name, phone)')
+      .eq('assigned_staff_id', staffId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateIssueStatus = async (issueId, status, resolutionNotes = null) => {
+  try {
+    const patch = { status, resolution_notes: resolutionNotes };
+    if (status === 'resolved' || status === 'closed') {
+      patch.resolved_at = new Date().toISOString();
+    }
+    const { data, error } = await supabase
+      .from('guest_issues')
+      .update(patch)
+      .eq('id', issueId)
+      .select();
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ============================================================================
+// STAFF MESSAGING
+// ============================================================================
+
+export const getAllConversations = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*, customers(full_name)')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const markCustomerMessagesRead = async (customerId) => {
+  try {
+    const { error } = await supabase
+      .from('messages')
+      .update({ is_read: true, read_at: new Date().toISOString() })
+      .eq('customer_id', customerId)
+      .eq('sender_type', 'customer');
+    if (error) throw error;
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+// ============================================================================
+// HOUSEKEEPING / ROOM CLEANING
+// ============================================================================
+
+export const getRoomCleaningLogs = async (staffId = null) => {
+  try {
+    let query = supabase
+      .from('room_cleaning_log')
+      .select('*, rooms(room_number, room_type)')
+      .order('cleaning_date', { ascending: false });
+    if (staffId) query = query.eq('assigned_staff_id', staffId);
+    const { data, error } = await query.limit(100);
+    if (error) throw error;
+    return { success: true, data };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const createCleaningLog = async (logData) => {
+  try {
+    const { data, error } = await supabase
+      .from('room_cleaning_log')
+      .insert([logData])
+      .select();
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
+
+export const updateRoomStatus = async (roomId, status) => {
+  try {
+    const { data, error } = await supabase
+      .from('rooms')
+      .update({ status })
+      .eq('id', roomId)
+      .select();
+    if (error) throw error;
+    return { success: true, data: data[0] };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+};
